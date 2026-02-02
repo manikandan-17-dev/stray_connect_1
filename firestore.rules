@@ -131,5 +131,22 @@ service cloud.firestore {
       // Never delete medical records (legal/audit requirement)
       allow delete: if false;
     }
+    
+    // ==================== FEED LOCATIONS ====================
+    
+    match /feed_locations/{locationId} {
+      // Anyone signed in can read feed locations
+      allow read: if isSignedIn();
+      
+      // Any signed-in user can create a feed location
+      allow create: if isSignedIn() && 
+                      request.resource.data.addedBy == request.auth.uid;
+      
+      // Only the user who added it can update
+      allow update: if isSignedIn() && isOwner(resource.data.addedBy);
+      
+      // Only the user who added it can delete
+      allow delete: if isSignedIn() && isOwner(resource.data.addedBy);
+    }
   }
 }

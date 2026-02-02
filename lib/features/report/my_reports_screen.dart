@@ -45,7 +45,7 @@ class MyReportsScreen extends StatelessWidget {
             gradient: AppTheme.primaryGradient,
           ),
         ),
-        actions: [
+        /* actions: [
           // Debug button to check Firestore
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -97,7 +97,7 @@ class MyReportsScreen extends StatelessWidget {
             },
             tooltip: 'Check User ID',
           ),
-        ],
+        ], */
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -142,17 +142,6 @@ class MyReportsScreen extends StatelessWidget {
             },
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Keep debug functionality accessible
-           Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const UserIdDebugScreen()),
-          );
-        },
-        child: const Icon(Icons.bug_report),
-        tooltip: 'Debug Reports',
       ),
     );
   }

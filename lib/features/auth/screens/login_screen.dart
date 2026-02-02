@@ -4,6 +4,7 @@ import 'package:stray_resuce_bih/core/theme/app_theme.dart';
 import 'package:stray_resuce_bih/core/models/enums.dart';
 import 'package:stray_resuce_bih/core/services/firebase_service.dart';
 import 'package:stray_resuce_bih/core/services/database_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:stray_resuce_bih/features/dashboards/citizen_dashboard.dart';
 import 'package:stray_resuce_bih/features/dashboards/volunteer_dashboard.dart';
 import 'package:stray_resuce_bih/features/dashboards/ngo_dashboard.dart';
@@ -70,26 +71,59 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       
-      // Parse Firebase error messages to user-friendly text
-      String errorMessage = 'Login failed';
-      
-      if (e.toString().contains('user-not-found')) {
-        errorMessage = 'User not available. Please sign up first.';
-      } else if (e.toString().contains('wrong-password')) {
-        errorMessage = 'Invalid password. Please try again.';
-      } else if (e.toString().contains('invalid-email')) {
-        errorMessage = 'Invalid email address.';
-      } else if (e.toString().contains('user-disabled')) {
-        errorMessage = 'This account has been disabled.';
-      } else if (e.toString().contains('too-many-requests')) {
-        errorMessage = 'Too many attempts. Please try again later.';
-      } else if (e.toString().contains('network')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (e.toString().contains('INVALID_LOGIN_CREDENTIALS')) {
-        errorMessage = 'Invalid email or password.';
+      // Aggressively simplify error messages for the user
+      String errorStr = e.toString().toLowerCase();
+      String simpleMessage = 'Login failed';
+
+      // Advanced check: Try to distinguish "User not found" vs "Wrong Password"
+      // even if Firebase returns a generic "invalid-credential".
+      if (errorStr.contains('user-not-found') || 
+          errorStr.contains('user not found') ||
+          errorStr.contains('email not found')) {
+         simpleMessage = 'User not available';
+      } else if (errorStr.contains('wrong-password')) {
+         simpleMessage = 'Incorrect password';
+      } else if (errorStr.contains('invalid-credential') || 
+                 errorStr.contains('credential') ||
+                 errorStr.contains('incorrect') ||
+                 errorStr.contains('malformed') ||
+                 errorStr.contains('invalid_login_credentials')) {
+        
+        // Generic error? Let's double check if user exists!
+        try {
+          final email = _emailController.text.trim();
+          if (email.isNotEmpty) {
+            // Note: fetchSignInMethodsForEmail might throw if EEP is strict,
+            // but for many projects it works or throws specific error.
+            final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+            if (methods.isEmpty) {
+              simpleMessage = 'User not available';
+            } else {
+              simpleMessage = 'Incorrect password';
+            }
+          } else {
+            simpleMessage = 'Incorrect password';
+          }
+        } catch (checkErr) {
+          // If verifying fails, stick to Incorrect password or generic.
+          // print('Check error: $checkErr');
+          simpleMessage = 'Incorrect password';
+        }
+        
+      } else if (errorStr.contains('invalid-email') || 
+                 errorStr.contains('badly formatted')) {
+        simpleMessage = 'Invalid email format';
+      } else if (errorStr.contains('network') || 
+                 errorStr.contains('connection') ||
+                 errorStr.contains('offline')) {
+        simpleMessage = 'Check internet connection';
+      } else if (errorStr.contains('too-many-requests')) {
+        simpleMessage = 'Too many attempts. Try later.';
+      } else if (errorStr.contains('user-disabled')) {
+        simpleMessage = 'Account disabled';
       }
       
-      _showErrorMessage(errorMessage);
+      _showErrorMessage(simpleMessage);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

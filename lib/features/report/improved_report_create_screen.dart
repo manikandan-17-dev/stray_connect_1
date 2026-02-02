@@ -263,7 +263,7 @@ class _ImprovedReportCreateScreenState extends State<ImprovedReportCreateScreen>
         'location': _currentPosition != null
             ? GeoPoint(_currentPosition!.latitude, _currentPosition!.longitude)
             : const GeoPoint(11.3410, 77.7172), // Default to Erode
-        'locationName': 'Erode, Tamil Nadu',
+        'locationName': _currentAddress ?? 'Erode, Tamil Nadu',
         'status': 'pending',
         'timestamp': FieldValue.serverTimestamp(),
         'createdAt': DateTime.now().toIso8601String(),
@@ -461,56 +461,56 @@ class _ImprovedReportCreateScreenState extends State<ImprovedReportCreateScreen>
 
   Widget _buildPhotoCard() {
     return Card(
-      child: InkWell(
-        onTap: _capturePhoto, // Open camera when tapped
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    _hasPhoto ? Icons.check_circle : Icons.camera_alt,
-                    color: _hasPhoto ? AppTheme.accentGreen : AppTheme.primaryOrange,
-                    size: 28,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '📸 Take Photo',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  if (!_hasPhoto)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppTheme.warningRed.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'Required',
-                        style: TextStyle(
-                          color: AppTheme.warningRed,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              if (!_hasPhoto) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'Take a clear photo of the animal',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  _hasPhoto ? Icons.check_circle : Icons.camera_alt,
+                  color: _hasPhoto ? AppTheme.accentGreen : AppTheme.primaryOrange,
+                  size: 28,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '📸 Take Photo',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
-                const SizedBox(height: 16),
-                Container(
+                if (!_hasPhoto)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.warningRed.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Required',
+                      style: TextStyle(
+                        color: AppTheme.warningRed,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            if (!_hasPhoto) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Take a clear photo of the animal',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 16),
+              InkWell(
+                onTap: _capturePhoto,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
                   height: 150,
                   decoration: BoxDecoration(
                     color: Colors.grey.shade100,
@@ -531,55 +531,55 @@ class _ImprovedReportCreateScreenState extends State<ImprovedReportCreateScreen>
                     ),
                   ),
                 ),
-              ] else ...[
-                const SizedBox(height: 12),
-                // Display captured image
-                Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: AppTheme.accentGreen.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.accentGreen, width: 2),
-                  ),
-                  child: _capturedImage != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.file(
-                            _capturedImage!,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                          ),
-                        )
-                      : const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.check_circle, size: 48, color: AppTheme.accentGreen),
-                              SizedBox(height: 8),
-                              Text(
-                                'Photo captured ✓',
-                                style: TextStyle(
-                                  color: AppTheme.accentGreen,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
+              ),
+            ] else ...[
+              const SizedBox(height: 12),
+              // Display captured image
+              Container(
+                height: 200,
+                decoration: BoxDecoration(
+                  color: AppTheme.accentGreen.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.accentGreen, width: 2),
+                ),
+                child: _capturedImage != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.file(
+                          _capturedImage!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
                         ),
+                      )
+                    : const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.check_circle, size: 48, color: AppTheme.accentGreen),
+                            SizedBox(height: 8),
+                            Text(
+                              'Photo captured ✓',
+                              style: TextStyle(
+                                color: AppTheme.accentGreen,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 8),
+              // Retake button
+              TextButton.icon(
+                onPressed: _capturePhoto,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Retake Photo'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.primaryOrange,
                 ),
-                const SizedBox(height: 8),
-                // Retake button
-                TextButton.icon(
-                  onPressed: _capturePhoto,
-                  icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Retake Photo'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.primaryOrange,
-                  ),
-                ),
-              ],
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
