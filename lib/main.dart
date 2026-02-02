@@ -3,8 +3,14 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stray_resuce_bih/core/i18n/locale_provider.dart';
 import 'package:stray_resuce_bih/features/auth/onboarding/splash_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:stray_resuce_bih/firebase_options.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const ProviderScope(child: MyApp()));
 }
 
