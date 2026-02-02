@@ -6,6 +6,10 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' as latlong;
+import 'package:http/http.dart' as http;
 
 class ImprovedReportCreateScreen extends StatefulWidget {
   const ImprovedReportCreateScreen({super.key});
@@ -22,7 +26,7 @@ class _ImprovedReportCreateScreenState extends State<ImprovedReportCreateScreen>
   double _emergencyLevel = 2; // 1=low, 2=medium, 3=critical
   final _descriptionCtrl = TextEditingController();
   bool _hasPhoto = false;
-  bool _hasLocation = true; // Auto-detected
+  bool _hasLocation = false; // Changed to false: User must tap to detect
   
   // Image capture variables
   File? _capturedImage;
@@ -31,6 +35,8 @@ class _ImprovedReportCreateScreenState extends State<ImprovedReportCreateScreen>
   
   // Location variables
   Position? _currentPosition;
+  String? _currentAddress;
+  bool _isLocating = false;
   bool _isSubmitting = false;
   
   late AnimationController _pulseController;
@@ -116,25 +122,98 @@ class _ImprovedReportCreateScreenState extends State<ImprovedReportCreateScreen>
   }
 
   Future<void> _getCurrentLocation() async {
+    setState(() => _isLocating = true);
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        return;
+        throw 'Location services are disabled.';
       }
 
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          return;
+          throw 'Location permissions are denied.';
         }
       }
 
-      _currentPosition = await Geolocator.getCurrentPosition(
+      final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
+
+      // Reverse Geocoding with OSM Nominatim
+      String address = 'Fetching address...';
+      try {
+        // Using Nominatim API for detailed POI data (e.g. College names)
+        final url = Uri.parse('https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.latitude}&lon=${position.longitude}&zoom=18&addressdetails=1');
+        final response = await http.get(url, headers: {'User-Agent': 'com.example.stray_rescue_bih'});
+        
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (data['address'] != null) {
+             final a = data['address'];
+             List<String> parts = [];
+             
+             // 1. POI Name (The most important part!)
+             if (a['amenity'] != null) parts.add(a['amenity']);
+             else if (a['building'] != null) parts.add(a['building']);
+             else if (a['institution'] != null) parts.add(a['institution']);
+             else if (a['university'] != null) parts.add(a['university']);
+             
+             // 2. Street/Area
+             if (a['road'] != null) parts.add(a['road']);
+             if (a['suburb'] != null) parts.add(a['suburb']);
+             else if (a['neighbourhood'] != null) parts.add(a['neighbourhood']);
+             
+             // 3. City
+             if (a['city'] != null) parts.add(a['city']);
+             else if (a['town'] != null) parts.add(a['town']);
+             
+             // 4. Pincode
+             if (a['postcode'] != null) parts.add(a['postcode']);
+             
+             // User requested FULL DETAIL, so we prioritize the complete display_name
+             // derived by OSM which includes everything.
+             if (data['display_name'] != null) {
+               address = data['display_name'];
+             } else {
+               address = parts.join(', ');
+             }
+          }
+        } else {
+             // Fallback to local geocoder if API fails
+             throw Exception('API failed'); 
+        }
+      } catch (e) {
+        print('OSM Error: $e, falling back to local geocoder');
+        try {
+          final placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+          if (placemarks.isNotEmpty) {
+            final p = placemarks.first;
+            address = [p.name, p.street, p.subLocality, p.locality, p.postalCode]
+              .where((e) => e != null && e.isNotEmpty).toSet().join(', ');
+          }
+        } catch (_) {
+           address = 'Location found (Address unavailable)';
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _currentPosition = position;
+          _currentAddress = address;
+          _hasLocation = true;
+        });
+      }
     } catch (e) {
       print('Error getting location: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Location error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLocating = false);
     }
   }
 
@@ -316,7 +395,7 @@ class _ImprovedReportCreateScreenState extends State<ImprovedReportCreateScreen>
                   child: Column(
                     children: [
                       const Text(
-                        'Report Animal',
+                        'Report Incident',
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 20,
@@ -714,9 +793,12 @@ class _ImprovedReportCreateScreenState extends State<ImprovedReportCreateScreen>
 
   Widget _buildLocationCard() {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
+      child: InkWell(
+        onTap: _getCurrentLocation,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
@@ -736,24 +818,75 @@ class _ImprovedReportCreateScreenState extends State<ImprovedReportCreateScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '📍 Location Detected',
+                    _hasLocation ? '📍 Location Detected' : '📍 Location Required',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    'Erode, Tamil Nadu',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey,
+                  if (_isLocating)
+                    const Row(
+                      children: [
+                        SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
+                        SizedBox(width: 8),
+                        Text('Fetching detailed address...', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
+                    )
+                  else ...[
+                    Text(
+                      _currentAddress ?? 'Tap to detect location',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: _hasLocation ? Colors.black87 : Colors.grey,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
+                    if (_hasLocation && _currentPosition != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        height: 150,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: FlutterMap(
+                            options: MapOptions(
+                              initialCenter: latlong.LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                              initialZoom: 17.0, // Closer zoom for satellite
+                              // Interaction enabled by default!
+                            ),
+                            children: [
+                              TileLayer(
+                                // Esri World Imagery (Satellite)
+                                urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                                userAgentPackageName: 'com.example.stray_resuce_bih',
+                              ),
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: latlong.LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                                    width: 40,
+                                    height: 40,
+                                    child: const Icon(Icons.location_on, color: Colors.red, size: 40),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ],
               ),
             ),
-            const Icon(Icons.check_circle, color: AppTheme.accentGreen),
+            if (_hasLocation) 
+               const Icon(Icons.check_circle, color: AppTheme.accentGreen),
           ],
         ),
+      ),
       ),
     );
   }

@@ -122,37 +122,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
       body: Column(
         children: [
           // Stats Banner
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF4ECDC4), Color(0xFF44A08D)],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.favorite, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  '🐾 126 animals rescued this month in Erode',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
+
           Expanded(child: _screens[_currentIndex]),
         ],
       ),

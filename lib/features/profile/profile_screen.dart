@@ -4,6 +4,7 @@ import 'package:stray_resuce_bih/core/storage/local_prefs.dart';
 import 'package:stray_resuce_bih/features/profile/edit_profile_screen.dart';
 import 'package:stray_resuce_bih/core/theme/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:stray_resuce_bih/features/auth/auth_gate.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -95,11 +96,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _logout() async {
     try {
       await FirebaseAuth.instance.signOut();
-      // Navigate to login/role selection handled by auth state stream in main/auth_gate
+      
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const AuthGate()),
+          (route) => false,
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error signing out: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error signing out: $e')),
+        );
+      }
     }
   }
 

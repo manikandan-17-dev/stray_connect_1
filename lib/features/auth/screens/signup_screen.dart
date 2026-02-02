@@ -361,6 +361,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               label: 'Full Name',
               icon: Icons.person,
               validator: (v) => v!.isEmpty ? 'Required' : null,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+              ],
             ),
             
             const SizedBox(height: 16),
@@ -574,7 +577,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         controller: _registrationNumberController,
         label: 'Registration Number',
         icon: Icons.badge,
+        keyboardType: TextInputType.number,
         validator: (v) => v!.isEmpty ? 'Required' : null,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       ),
     ];
   }
@@ -601,7 +606,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         controller: _licenseNumberController,
         label: 'License Number',
         icon: Icons.verified,
+        keyboardType: TextInputType.number,
         validator: (v) => v!.isEmpty ? 'Required' : null,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       ),
       
       const SizedBox(height: 16),

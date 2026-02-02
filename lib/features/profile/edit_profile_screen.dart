@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:stray_resuce_bih/core/storage/local_prefs.dart';
 import 'package:stray_resuce_bih/core/theme/app_theme.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -91,15 +92,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         desiredAccuracy: LocationAccuracy.high,
       );
       
+      // Reverse Geocoding
+      String completeAddress = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+      String fetchedCity = '';
+      String fetchedWard = '';
+
+      try {
+        List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+        if (placemarks.isNotEmpty) {
+          final place = placemarks.first;
+          fetchedCity = place.locality ?? place.subAdministrativeArea ?? '';
+          fetchedWard = place.subLocality ?? '';
+          
+          // Construct a readable address
+          completeAddress = [
+            place.street,
+            place.subLocality,
+            place.locality,
+            place.administrativeArea,
+            place.postalCode
+          ].where((e) => e != null && e.isNotEmpty).toSet().join(', '); // toSet to remove duplicates
+        }
+      } catch (e) {
+        print('Geocoding error: $e');
+        // Fallback to coords if geocoding fails (e.g. network issue)
+      }
+
       setState(() {
         _currentLocation = GeoPoint(position.latitude, position.longitude);
-        _locationText = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
-        _cityCtrl.text = 'Auto-detected'; // Ideally we would geocode this
+        _locationText = completeAddress;
+        if (fetchedCity.isNotEmpty) _cityCtrl.text = fetchedCity;
+        if (fetchedWard.isNotEmpty) _wardCtrl.text = fetchedWard;
       });
       
       if(mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(content: Text('Location updated from GPS')),
+           const SnackBar(content: Text('Location & Address updated from GPS')),
         );
       }
 
@@ -200,6 +228,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         border: OutlineInputBorder(),
                       ),
                       validator: (v) => v?.trim().isEmpty == true ? 'Name is required' : null,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
