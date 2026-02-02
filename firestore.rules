@@ -1,0 +1,135 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==================== HELPER FUNCTIONS ====================
+    
+    // Check if user is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Check if user owns the document
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+    
+    // Get user's role from their profile
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    // Check if user has specific role
+    function hasRole(role) {
+      return getUserRole() == role;
+    }
+    
+    // ==================== USERS COLLECTION ====================
+    
+    match /users/{userId} {
+      // Anyone can read user profiles (for volunteer/NGO assignment)
+      allow read: if isSignedIn();
+      
+      // Users can create their own profile during signup
+      allow create: if isSignedIn() && isOwner(userId);
+      
+      // Users can only update their own profile
+      allow update: if isSignedIn() && isOwner(userId);
+      
+      // Never allow deletion (for audit trail)
+      allow delete: if false;
+    }
+    
+    // ==================== REPORTS COLLECTION (NEW) ====================
+    // This is for the improved report system with base64 images
+    
+    match /reports/{reportId} {
+      // FIXED: Allow ANY authenticated user to read ALL reports
+      // This is necessary for the app to fetch and display reports
+      allow read: if isSignedIn();
+      
+      // Anyone signed in can create a report
+      // Must set userId to their own auth.uid
+      allow create: if isSignedIn() && 
+                      request.resource.data.userId == request.auth.uid;
+      
+      // Can update if:
+      // - You created the report
+      // - You're assigned as volunteer
+      // - You're an NGO
+      // - You're a vet
+      allow update: if isSignedIn() && (
+        isOwner(resource.data.userId) ||
+        (resource.data.keys().hasAny(['assignedVolunteer']) && 
+         isOwner(resource.data.assignedVolunteer)) ||
+        hasRole('ngo') ||
+        hasRole('vet')
+      );
+      
+      // Only report creator can delete
+      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+    }
+    
+    // ==================== ANIMAL REPORTS (LEGACY) ====================
+    
+    match /animal_reports/{reportId} {
+      // Anyone signed in can read reports
+      allow read: if isSignedIn();
+      
+      // Anyone can create a report (citizens report animals)
+      allow create: if isSignedIn();
+      
+      // Can update if:
+      // - You created the report (citizen)
+      // - You're assigned as volunteer
+      // - You're an NGO
+      // - You're a vet
+      allow update: if isSignedIn() && (
+        isOwner(resource.data.reportedBy) ||
+        (resource.data.keys().hasAny(['assignedVolunteer']) && 
+         isOwner(resource.data.assignedVolunteer)) ||
+        hasRole('ngo') ||
+        hasRole('vet')
+      );
+      
+      // Only report creator can delete
+      allow delete: if isSignedIn() && isOwner(resource.data.reportedBy);
+    }
+    
+    // ==================== RESCUE LOGS ====================
+    
+    match /rescue_logs/{logId} {
+      // Anyone can read logs (for timeline tracking)
+      allow read: if isSignedIn();
+      
+      // Anyone can create logs (for tracking actions)
+      allow create: if isSignedIn();
+      
+      // Logs are immutable (cannot be updated or deleted)
+      allow update, delete: if false;
+    }
+    
+    // ==================== MEDICAL RECORDS ====================
+    
+    match /medical_records/{recordId} {
+      // Anyone can read medical records
+      allow read: if isSignedIn();
+      
+      // Only vets can create medical records
+      allow create: if isSignedIn() && hasRole('vet');
+      
+      // Can update if:
+      // - You're the assigned vet
+      // - You're an NGO (for oversight)
+      allow update: if isSignedIn() && (
+        (resource.data.keys().hasAny(['vetId']) && 
+         isOwner(resource.data.vetId)) ||
+        hasRole('ngo')
+      );
+      
+      // Never delete medical records (legal/audit requirement)
+      allow delete: if false;
+    }
+  }
+}

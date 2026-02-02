@@ -1,42 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:stray_resuce_bih/core/i18n/locale_provider.dart';
-import 'package:stray_resuce_bih/features/auth/onboarding/splash_screen.dart';
+import 'package:stray_resuce_bih/core/theme/app_theme.dart';
+import 'package:stray_resuce_bih/features/auth/auth_gate.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:stray_resuce_bih/firebase_options.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Initialize App Check
+  await FirebaseAppCheck.instance.activate(
+    androidProvider: AndroidProvider.debug,
+  );
+
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   // This widget is the root of your application.
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final locale = ref.watch(localeProvider);
+  Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      locale: locale,
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        Locale('en'),
-        Locale('ta'),
-      ],
-      home: const SplashScreen(),
+      title: 'StrayCare Connect',
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.light,
+      home: const AuthGate(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
